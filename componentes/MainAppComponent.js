@@ -1,14 +1,15 @@
-import { View, Text, Button } from 'react-native';
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+
+import Perfil from './PerfilComponent';
+import Entrenamiento from './EntrenamientoComponent';
+
+const Drawer = createDrawerNavigator();
 
 export default function MainApp() {
-
   return (
-    <View style={{ flex:1, justifyContent:'center', alignItems:'center' }}>
-      <Text>ESTÁS DENTRO DE LA APP</Text>
-
-      <Button title="Cerrar sesión" onPress={() => signOut(auth)} />
-    </View>
+    <Drawer.Navigator>
+      <Drawer.Screen name="Perfil" component={Perfil} />
+      <Drawer.Screen name="Entrenamiento" component={Entrenamiento} />
+    </Drawer.Navigator>
   );
 }
