@@ -1,203 +1,29 @@
-// import { useState } from 'react';
-// import { View, Text, Button, StyleSheet, Platform } from 'react-native';
-// import { Pedometer, Accelerometer } from 'expo-sensors';
-// import * as Location from 'expo-location';
-// import MapView, { Marker } from 'react-native-maps';
-
-// export default function Entrenamientos() {
-
-//   const [running, setRunning] = useState(false);
-//   const [steps, setSteps] = useState(0);
-//   const [accData, setAccData] = useState({ x: 0, y: 0, z: 0 });
-
-//   const [pedSubscription, setPedSubscription] = useState(null);
-//   const [accSubscription, setAccSubscription] = useState(null);
-
-//   // ======================
-//   // MAPA / LOCALIZACIÓN
-//   // ======================
-//   const [showMap, setShowMap] = useState(false);
-//   const [location, setLocation] = useState(null);
-//   const [locationSub, setLocationSub] = useState(null);
-
-//   const startLocation = async () => {
-//     const { status } = await Location.requestForegroundPermissionsAsync();
-
-//     if (status !== 'granted') {
-//       alert('Permiso de ubicación denegado');
-//       return;
-//     }
-
-//     const sub = await Location.watchPositionAsync(
-//       {
-//         accuracy: Location.Accuracy.High,
-//         timeInterval: 2000,
-//         distanceInterval: 1,
-//       },
-//       (loc) => {
-//         setLocation(loc.coords);
-//       }
-//     );
-
-//     setLocationSub(sub);
-//     setShowMap(true);
-//   };
-
-//   const stopLocation = () => {
-//     if (locationSub) {
-//       locationSub.remove();
-//       setLocationSub(null);
-//     }
-//     setShowMap(false);
-//   };
-
-//   // ======================
-//   // PEDOMETER
-//   // ======================
-//   const startPedometer = async () => {
-//     const isAvailable = await Pedometer.isAvailableAsync();
-
-//     if (!isAvailable) {
-//       alert("Pedometer no disponible en este dispositivo");
-//       return;
-//     }
-
-//     if (Platform.OS === 'android') {
-//       const { status } = await Pedometer.requestPermissionsAsync();
-
-//       if (status !== 'granted') {
-//         alert('Permiso de actividad física denegado');
-//         return;
-//       }
-//     }
-
-//     const sub = Pedometer.watchStepCount(result => {
-//       setSteps(result.steps);
-//     });
-
-//     setPedSubscription(sub);
-//   };
-
-//   const stopPedometer = () => {
-//     pedSubscription && pedSubscription.remove();
-//     setPedSubscription(null);
-//   };
-
-//   // ======================
-//   // ACCELEROMETER
-//   // ======================
-//   const startAccelerometer = () => {
-//     Accelerometer.setUpdateInterval(500);
-
-//     const sub = Accelerometer.addListener(data => {
-//       setAccData(data);
-//     });
-
-//     setAccSubscription(sub);
-//   };
-
-//   const stopAccelerometer = () => {
-//     accSubscription && accSubscription.remove();
-//     setAccSubscription(null);
-//   };
-
-//   // ======================
-//   // INICIAR ENTRENAMIENTO
-//   // ======================
-//   const startTraining = async () => {
-//     setSteps(0);
-//     setRunning(true);
-
-//     await startPedometer();
-//     startAccelerometer();
-//   };
-
-//   // ======================
-//   // PARAR ENTRENAMIENTO
-//   // ======================
-//   const stopTraining = () => {
-//     setRunning(false);
-
-//     stopPedometer();
-//     stopAccelerometer();
-//     stopLocation();
-
-//     const kcal = steps * 0.04;
-
-//     alert(
-//       `Entrenamiento terminado\nPasos: ${steps}\nKcal: ${kcal.toFixed(2)}`
-//     );
-//   };
-
-//   // ======================
-//   // UI
-//   // ======================
-//   if (showMap && location) {
-//     return (
-//       <View style={{ flex: 1 }}>
-//         <MapView
-//           style={{ flex: 1 }}
-//           showsUserLocation
-//           region={{
-//             latitude: location.latitude,
-//             longitude: location.longitude,
-//             latitudeDelta: 0.005,
-//             longitudeDelta: 0.005,
-//           }}
-//         >
-//           <Marker coordinate={location} />
-//         </MapView>
-
-//         <Button title="Cerrar mapa" onPress={stopLocation} />
-//       </View>
-//     );
-//   }
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Entrenamiento</Text>
-
-//       <Text style={styles.text}>Pasos: {steps}</Text>
-
-//       <Text style={styles.text}>Accel X: {accData.x.toFixed(2)}</Text>
-//       <Text style={styles.text}>Accel Y: {accData.y.toFixed(2)}</Text>
-//       <Text style={styles.text}>Accel Z: {accData.z.toFixed(2)}</Text>
-
-//       {!running ? (
-//         <Button title="Iniciar entrenamiento" onPress={startTraining} />
-//       ) : (
-//         <Button title="Parar entrenamiento" onPress={stopTraining} />
-//       )}
-//       {!showMap ? (
-//         <Button title="Abrir mapa" onPress={startLocation} />
-//       ) : null}
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: { 
-//     flex: 1, 
-//     justifyContent: 'center', 
-//     alignItems: 'center',
-//     padding: 20
-//   },
-//   title: { 
-//     fontSize: 22, 
-//     marginBottom: 20,
-//     fontWeight: 'bold'
-//   },
-//   text: {
-//     fontSize: 16,
-//     marginBottom: 5
-//   }
-// });
-
 import { useState } from 'react';
 import { View, Text, Button, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { Pedometer, Accelerometer } from 'expo-sensors';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
+
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // metros
+  const toRad = (value) => (value * Math.PI) / 180;
+
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) *
+    Math.cos(φ2) *
+    Math.sin(Δλ / 2) *
+    Math.sin(Δλ / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+};
 
 export default function Entrenamientos() {
 
@@ -211,7 +37,8 @@ export default function Entrenamientos() {
   const [showMap, setShowMap] = useState(false);
   const [location, setLocation] = useState(null);
   const [locationSub, setLocationSub] = useState(null);
-
+  const [distance, setDistance] = useState(0);
+  const [lastLocation, setLastLocation] = useState(null);
   // ======================
   // LOCALIZACIÓN
   // ======================
@@ -222,7 +49,9 @@ export default function Entrenamientos() {
       alert('Permiso de ubicación denegado');
       return;
     }
-
+    setDistance(0);
+    setLastLocation(null);
+  
     const sub = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High,
@@ -230,7 +59,21 @@ export default function Entrenamientos() {
         distanceInterval: 1,
       },
       (loc) => {
-        setLocation(loc.coords);
+        const coords = loc.coords;
+        setLocation(coords);
+
+        if (lastLocation) {
+          const d = getDistance(
+            lastLocation.latitude,
+            lastLocation.longitude,
+            coords.latitude,
+            coords.longitude
+          );
+
+          setDistance(prev => prev + d);
+        }
+
+        setLastLocation(coords);
       }
     );
 
@@ -239,9 +82,15 @@ export default function Entrenamientos() {
   };
 
   const stopLocation = () => {
-    locationSub && locationSub.remove();
-    setLocationSub(null);
+    if (locationSub) {
+      locationSub.remove();
+      setLocationSub(null);
+    }
+
     setShowMap(false);
+
+    //alert(`Distancia recorrida: ${(distance / 1000).toFixed(2)} km`);
+    alert(`Distancia recorrida: ${(distance).toFixed(2)} m`);
   };
 
   // ======================
