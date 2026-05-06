@@ -21,7 +21,7 @@
         "backgroundColor": "#ffffff",
         "permissions": [
           "ACTIVITY_RECOGNITION",
-          "ACTIVITY_RECOGNITION"
+          "ACCESS_FINE_LOCATION"
         ]
       },
       "edgeToEdgeEnabled": true,
