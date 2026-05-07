@@ -1,6 +1,8 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import 'expo-dev-client';
+
 import Login from './componentes/LoginComponent';
 import Register from './componentes/RegisterComponent';
 import MainApp from './componentes/MainAppComponent';
