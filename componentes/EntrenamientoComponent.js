@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, Text, Button, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { Pedometer, Accelerometer } from 'expo-sensors';
 import * as Location from 'expo-location';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; // metros
@@ -38,7 +38,11 @@ export default function Entrenamientos() {
   const [location, setLocation] = useState(null);
   const [locationSub, setLocationSub] = useState(null);
   const [distance, setDistance] = useState(0);
-  const [lastLocation, setLastLocation] = useState(null);
+  const [routeCoords, setRouteCoords] = useState([]);
+  const mapRef = useRef(null);
+  const lastLocationRef = useRef(null);
+  const runningRef = useRef(false);
+
   // ======================
   // LOCALIZACIÓN
   // ======================
@@ -50,30 +54,74 @@ export default function Entrenamientos() {
       return;
     }
     setDistance(0);
-    setLastLocation(null);
-  
+    //setLastLocation(null);
+    lastLocationRef.current = null;
+
     const sub = await Location.watchPositionAsync(
       {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 2000,
-        distanceInterval: 1,
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 3000,
+        distanceInterval: 5,
       },
       (loc) => {
+        if (!runningRef.current) return;
         const coords = loc.coords;
         setLocation(coords);
 
-        if (lastLocation) {
-          const d = getDistance(
-            lastLocation.latitude,
-            lastLocation.longitude,
-            coords.latitude,
-            coords.longitude
-          );
+        if (!lastLocationRef.current) {
 
-          setDistance(prev => prev + d);
+          const firstPoint = {
+            latitude: coords.latitude,
+            longitude: coords.longitude
+          };
+
+          setRouteCoords([firstPoint]);
+
+          lastLocationRef.current = coords;
+
+          return;
         }
 
-        setLastLocation(coords);
+        const d = getDistance(
+          lastLocationRef.current.latitude,
+          lastLocationRef.current.longitude,
+          coords.latitude,
+          coords.longitude
+        );
+
+        // IGNORAR ruido GPS
+        if (d > 5 && d < 100) {
+
+          setDistance(prev => prev + d);
+
+          const newPoint = {
+            latitude: coords.latitude,
+            longitude: coords.longitude
+          };
+
+          setRouteCoords(prev => {
+
+            const updatedCoords = [...prev, newPoint];
+
+            if (mapRef.current) {
+
+              mapRef.current.fitToCoordinates(updatedCoords, {
+                edgePadding: {
+                  top: 80,
+                  right: 80,
+                  bottom: 80,
+                  left: 80
+                },
+                animated: true
+              });
+            }
+
+            return updatedCoords;
+          });
+        }
+
+        lastLocationRef.current = coords;
+
       }
     );
 
@@ -87,27 +135,32 @@ export default function Entrenamientos() {
       setLocationSub(null);
     }
 
-    setShowMap(false);
-
-    //alert(`Distancia recorrida: ${(distance / 1000).toFixed(2)} km`);
-    alert(`Distancia recorrida: ${(distance).toFixed(2)} m`);
   };
 
   // ======================
   // PEDOMETER
   // ======================
   const startPedometer = async () => {
+
     const isAvailable = await Pedometer.isAvailableAsync();
 
     if (!isAvailable) return;
 
     if (Platform.OS === 'android') {
       const { status } = await Pedometer.requestPermissionsAsync();
+
       if (status !== 'granted') return;
     }
 
+    let initial = null;
+
     const sub = Pedometer.watchStepCount(result => {
-      setSteps(result.steps);
+
+      if (initial === null) {
+        initial = result.steps;
+      }
+
+      setSteps(result.steps - initial);
     });
 
     setPedSubscription(sub);
@@ -140,15 +193,26 @@ export default function Entrenamientos() {
   // ENTRENAMIENTO
   // ======================
   const startTraining = async () => {
+
     setSteps(0);
+    setDistance(0);
+    setRouteCoords([]);
+
+    lastLocationRef.current = null;
+
     setRunning(true);
+
+    runningRef.current = true;
 
     await startPedometer();
     startAccelerometer();
+    await startLocation();
   };
 
   const stopTraining = () => {
     setRunning(false);
+
+    runningRef.current = false;
 
     stopPedometer();
     stopAccelerometer();
@@ -156,34 +220,16 @@ export default function Entrenamientos() {
 
     const kcal = steps * 0.04;
 
-    alert(`Entrenamiento terminado\nPasos: ${steps}\nKcal: ${kcal.toFixed(2)}`);
+    //alert(`Entrenamiento terminado\nPasos: ${steps}\nKcal: ${kcal.toFixed(2)}`);
+    alert(
+      `Entrenamiento terminado\n\n` +
+      `Pasos: ${steps}\n` +
+      `Distancia: ${(distance / 1000).toFixed(2)} km\n` +
+      `Kcal: ${kcal.toFixed(2)}`
+    );
+
   };
 
-  // ======================
-  // MAPA
-  // ======================
-  if (showMap && location) {
-    return (
-      <View style={{ flex: 1 }}>
-        <MapView
-          style={{ flex: 1 }}
-          showsUserLocation
-          region={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          }}
-        >
-          <Marker coordinate={location} />
-        </MapView>
-
-        <TouchableOpacity style={styles.closeMapBtn} onPress={stopLocation}>
-          <Text style={styles.btnText}>Cerrar mapa</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -196,7 +242,31 @@ export default function Entrenamientos() {
           <Text style={styles.stat}>X: {accData.x.toFixed(2)}</Text>
           <Text style={styles.stat}>Y: {accData.y.toFixed(2)}</Text>
           <Text style={styles.stat}>Z: {accData.z.toFixed(2)}</Text>
+          <Text style={styles.stat}>Distancia: {(distance / 1000).toFixed(2)} km</Text>
         </View>
+
+        {showMap && location && (
+
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            showsUserLocation
+            region={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
+            }}
+          >
+            <Marker coordinate={location} />
+            <Polyline
+              coordinates={routeCoords}
+              strokeWidth={5}
+              strokeColor="#1E88E5"
+            />
+          </MapView>
+
+        )}
 
         {!running ? (
           <TouchableOpacity style={styles.startBtn} onPress={startTraining}>
@@ -207,10 +277,6 @@ export default function Entrenamientos() {
             <Text style={styles.btnText}>Parar entrenamiento</Text>
           </TouchableOpacity>
         )}
-
-        <TouchableOpacity style={styles.mapBtn} onPress={startLocation}>
-          <Text style={styles.btnText}>Abrir mapa</Text>
-        </TouchableOpacity>
 
       </View>
 
@@ -270,18 +336,15 @@ const styles = StyleSheet.create({
     borderRadius: 10
   },
 
-  closeMapBtn: {
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
-    backgroundColor: '#E53935',
-    padding: 15,
-    borderRadius: 10
-  },
-
   btnText: {
     color: '#fff',
     textAlign: 'center',
     fontWeight: 'bold'
-  }
+  },
+  map: {
+    width: '100%',
+    height: 300,
+    borderRadius: 15,
+    marginBottom: 20
+  },
 });
