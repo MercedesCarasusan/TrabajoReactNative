@@ -1,4 +1,7 @@
-import { useState, useRef } from 'react';
+import { Alert } from 'react-native';
+import { auth, db } from '../firebase/firebaseConfig';
+import { collection, addDoc } from 'firebase/firestore';
+import { useState, useRef, useEffect } from 'react';
 import { View, Text, Button, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { Pedometer, Accelerometer } from 'expo-sensors';
 import * as Location from 'expo-location';
@@ -38,10 +41,39 @@ export default function Entrenamientos() {
   const [location, setLocation] = useState(null);
   const [locationSub, setLocationSub] = useState(null);
   const [distance, setDistance] = useState(0);
+  const [startTime, setStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [endTime, setEndTime] = useState(null);
+
   const [routeCoords, setRouteCoords] = useState([]);
   const mapRef = useRef(null);
   const lastLocationRef = useRef(null);
   const runningRef = useRef(false);
+
+  useEffect(() => {
+
+    let interval = null;
+
+    if (running && startTime) {
+
+      interval = setInterval(() => {
+
+        const now = Date.now();
+
+        const elapsedSeconds = (now - startTime) / 1000;
+
+        setElapsedTime(elapsedSeconds);
+
+      }, 1000); // cada 1 segundo
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+
+  }, [running, startTime]);
 
   // ======================
   // LOCALIZACIÓN
@@ -197,6 +229,7 @@ export default function Entrenamientos() {
     setSteps(0);
     setDistance(0);
     setRouteCoords([]);
+    setElapsedTime(0);
 
     lastLocationRef.current = null;
 
@@ -204,10 +237,42 @@ export default function Entrenamientos() {
 
     runningRef.current = true;
 
+    setStartTime(Date.now());
+
     await startPedometer();
     startAccelerometer();
     await startLocation();
   };
+
+
+  const guardarEntrenamiento = async (data) => {
+
+    try {
+
+      const user = auth.currentUser;
+
+      if (!user) return;
+
+      await addDoc(
+        collection(db, 'entrenamientos', user.uid, 'sesiones'),
+        data
+      );
+
+      Alert.alert(
+        'Entrenamiento guardado',
+        'Los datos se han almacenado correctamente'
+      );
+
+    } catch (error) {
+
+      console.log(error);
+      Alert.alert(
+        'Error',
+        'No se pudo guardar el entrenamiento'
+      );
+    }
+  };
+
 
   const stopTraining = () => {
     setRunning(false);
@@ -218,17 +283,105 @@ export default function Entrenamientos() {
     stopAccelerometer();
     stopLocation();
 
+    const end = Date.now();
+
+    setEndTime(end);
+
+    // ======================
+    // DURACIÓN
+    // ======================
+    const durationMs = end - startTime;
+    const durationSeconds = durationMs / 1000;
+    const durationMinutes = durationSeconds / 60;
+
+    // ======================
+    // VELOCIDAD MEDIA
+    // ======================
+
+    // distancia en km
+    const distanceKm = distance / 1000;
+
+    // tiempo en horas
+    const durationHours = durationSeconds / 3600;
+
+    const avgSpeed = durationHours > 0
+      ? distanceKm / durationHours
+      : 0;
+
+    // ======================
+    // TIPO ENTRENAMIENTO
+    // ======================
+
+    let trainingType = 'Paseo';
+
+    if (avgSpeed >= 6 && avgSpeed < 9) {
+      trainingType = 'Trote';
+    }
+
+    if (avgSpeed >= 9) {
+      trainingType = 'Running';
+    }
+
+    // ======================
+    // KCAL
+    // ======================
+
     const kcal = steps * 0.04;
 
-    //alert(`Entrenamiento terminado\nPasos: ${steps}\nKcal: ${kcal.toFixed(2)}`);
-    alert(
-      `Entrenamiento terminado\n\n` +
+    // ======================
+    // ALERT
+    // ======================
+
+    /*     alert(
+          `Entrenamiento terminado\n\n` +
+          `Tipo: ${trainingType}\n` +
+          `Pasos: ${steps}\n` +
+          `Distancia: ${distanceKm.toFixed(2)} km\n` +
+          `Duración: ${durationMinutes.toFixed(1)} min\n` +
+          `Velocidad media: ${avgSpeed.toFixed(2)} km/h\n` +
+          `Kcal: ${kcal.toFixed(2)}`
+        ); */
+
+    const trainingData = {
+
+      fecha: new Date().toISOString(),
+      tipoEntrenamiento: trainingType,
+      duracion: Number(durationSeconds.toFixed(1)),
+      distancia: Number(distanceKm.toFixed(2)),
+      velocidadMedia: Number(avgSpeed.toFixed(2)),
+      pasos: steps,
+      kcal: Number(kcal.toFixed(2)),
+      foto: ''
+      
+    };
+
+    Alert.alert(
+      'Entrenamiento terminado',
+      `Tipo: ${trainingType}\n` +
       `Pasos: ${steps}\n` +
-      `Distancia: ${(distance / 1000).toFixed(2)} km\n` +
-      `Kcal: ${kcal.toFixed(2)}`
+      `Distancia: ${distanceKm.toFixed(2)} km\n` +
+      `Duración: ${durationMinutes.toFixed(1)} min\n` +
+      `Velocidad media: ${avgSpeed.toFixed(2)} km/h\n` +
+      `Kcal: ${kcal.toFixed(2)}`,
+
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Guardar entrenamiento',
+          onPress: () => guardarEntrenamiento(trainingData)
+        }
+      ]
     );
 
   };
+
+  const minutes = Math.floor(elapsedTime / 60);
+  const seconds = Math.floor(elapsedTime % 60);
+
+  const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
 
   return (
@@ -243,6 +396,7 @@ export default function Entrenamientos() {
           <Text style={styles.stat}>Y: {accData.y.toFixed(2)}</Text>
           <Text style={styles.stat}>Z: {accData.z.toFixed(2)}</Text>
           <Text style={styles.stat}>Distancia: {(distance / 1000).toFixed(2)} km</Text>
+          <Text style={styles.stat}>Tiempo: {formattedTime} min</Text>
         </View>
 
         {showMap && location && (
