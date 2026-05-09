@@ -14,6 +14,15 @@ export default {
       backgroundColor: "#ffffff"
     },
 
+    plugins:[
+      [
+        "expo-sensors",
+        {
+          motionPermission: "Allow $(PRODUCT_NAME) to access your device motion"
+        }
+      ]
+    ],
+
     ios: {
       supportsTablet: true
     },
