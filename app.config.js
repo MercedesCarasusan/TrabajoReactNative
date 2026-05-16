@@ -1,15 +1,15 @@
 export default {
   expo: {
-    name: "trabajo",
+    name: "MotionTrack",
     slug: "trabajo",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/MotionTrack.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
 
     splash: {
-      image: "./assets/splash-icon.png",
+      image: "./assets/MotionTrack.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff"
     },
@@ -19,6 +19,14 @@ export default {
         "expo-sensors",
         {
           motionPermission: "Allow $(PRODUCT_NAME) to access your device motion"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Permite que la app seleccione fotos para adjuntarlas al entrenamiento",
+          cameraPermission: "Permite que la app use la camara para adjuntar fotos al entrenamiento",
+          microphonePermission: false
         }
       ]
     ],
@@ -32,7 +40,7 @@ export default {
       edgeToEdgeEnabled: true,
 
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/MotionTrack.png",
         backgroundColor: "#ffffff"
       },
 
