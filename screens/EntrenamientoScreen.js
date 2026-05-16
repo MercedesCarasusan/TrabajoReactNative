@@ -1,17 +1,22 @@
 import { Alert } from 'react-native';
-import { saveTraining } from '../services/firebase/trainingService';
 import { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { saveTrainingThunk } from '../redux/slices/trainingSlice';
 import { calculateAverageSpeed, getTrainingType, formatTime, calculateCalories } from '../utils/trainingUtils';
 import useTrainingTimer from '../hooks/useTrainingTimer';
 import usePedometer from '../hooks/usePedometer';
 import useAccelerometer from '../hooks/useAccelerometer';
 import useLocationTracking from '../hooks/useLocationTracking';
+import {
+  pickTrainingImageFromCamera,
+  pickTrainingImageFromLibrary
+} from '../services/local/trainingImageService';
 
 export default function Entrenamientos() {
 
+  const dispatch = useDispatch();
   const user = useSelector(state => state.auth.user);
   const peso = useSelector(state => state.profile.peso);
 
@@ -68,13 +73,29 @@ export default function Entrenamientos() {
   };
 
 
-  const guardarEntrenamiento = async (data) => {
+  const guardarEntrenamiento = async (data, getPhotoPath) => {
 
     try {
 
       if (!user) return;
 
-      await saveTraining(user.uid, data);
+      let foto = data.foto;
+
+      if (getPhotoPath) {
+        foto = await getPhotoPath();
+
+        if (!foto) {
+          return;
+        }
+      }
+
+      await dispatch(saveTrainingThunk({
+        userId: user.uid,
+        trainingData: {
+          ...data,
+          foto
+        }
+      })).unwrap();
 
       Alert.alert(
         'Entrenamiento guardado',
@@ -86,9 +107,30 @@ export default function Entrenamientos() {
       console.log(error);
       Alert.alert(
         'Error',
-        'No se pudo guardar el entrenamiento'
+        error.message || 'No se pudo guardar el entrenamiento'
       );
     }
+  };
+
+  const mostrarOpcionesFoto = (trainingData) => {
+    Alert.alert(
+      'Adjuntar foto',
+      'Elige de donde quieres sacar la foto del entrenamiento',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Galeria',
+          onPress: () => guardarEntrenamiento(trainingData, pickTrainingImageFromLibrary)
+        },
+        {
+          text: 'Camara',
+          onPress: () => guardarEntrenamiento(trainingData, pickTrainingImageFromCamera)
+        }
+      ]
+    );
   };
 
 
@@ -164,6 +206,10 @@ export default function Entrenamientos() {
         {
           text: 'Guardar entrenamiento',
           onPress: () => guardarEntrenamiento(trainingData)
+        },
+        {
+          text: 'Adjuntar foto',
+          onPress: () => mostrarOpcionesFoto(trainingData)
         }
       ]
     );

@@ -5,7 +5,9 @@ import {
   addDoc,
   getDocs,
   query,
-  orderBy
+  orderBy,
+  doc,
+  deleteDoc
 } from 'firebase/firestore';
 
 
@@ -16,10 +18,12 @@ import {
 export const saveTraining = async (userId, trainingData) => {
 
   try {
-    await addDoc(
+    const docRef = await addDoc(
       collection(db, 'entrenamientos', userId, 'sesiones'),
       trainingData
     );
+
+    return docRef.id;
 
   } catch (error) {
     console.log(error);
@@ -54,6 +58,27 @@ export const getTrainings = async (userId) => {
     });
 
     return data;
+
+  } catch (error) {
+
+    console.log(error);
+    throw error;
+
+  }
+
+};
+
+
+// ======================
+// BORRAR ENTRENAMIENTO
+// ======================
+
+export const deleteTraining = async (userId, trainingId) => {
+
+  try {
+    await deleteDoc(
+      doc(db, 'entrenamientos', userId, 'sesiones', trainingId)
+    );
 
   } catch (error) {
 

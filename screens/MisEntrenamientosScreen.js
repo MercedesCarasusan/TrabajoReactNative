@@ -2,10 +2,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 
 import { useSelector, useDispatch } from 'react-redux';
-import { setFilter, setTrainings, setLoading, setError } from '../redux/slices/trainingSlice';
+import {
+  deleteTrainingThunk,
+  setFilter,
+  setTrainings,
+  setLoading,
+  setError
+} from '../redux/slices/trainingSlice';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 
 import { getTrainings } from '../services/firebase/trainingService';
 import TrainingFilters from '../components/trainings/TrainingFilters';
@@ -57,6 +63,45 @@ export default function MisEntrenamientos() {
     } finally {
       dispatch(setLoading(false));
     }
+  };
+
+  const borrarEntrenamiento = async (training) => {
+
+    try {
+      if (!user) return;
+
+      await dispatch(deleteTrainingThunk({
+        userId: user.uid,
+        trainingId: training.id,
+        foto: training.foto
+      })).unwrap();
+
+    } catch (error) {
+
+      console.log(error);
+      Alert.alert(
+        'Error',
+        error.message || 'No se pudo borrar el entrenamiento'
+      );
+    }
+  };
+
+  const confirmarBorradoEntrenamiento = (training) => {
+    Alert.alert(
+      'Borrar entrenamiento',
+      'Esta accion eliminara el entrenamiento guardado',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Borrar entrenamiento',
+          style: 'destructive',
+          onPress: () => borrarEntrenamiento(training)
+        }
+      ]
+    );
   };
 
   // FILTRO
@@ -182,7 +227,10 @@ export default function MisEntrenamientos() {
             contentContainerStyle={{ paddingBottom: 20 }}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <TrainingCard item={item} />
+              <TrainingCard
+                item={item}
+                onLongPress={() => confirmarBorradoEntrenamiento(item)}
+              />
             )}
           />
         )
