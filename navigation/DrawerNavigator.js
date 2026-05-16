@@ -1,16 +1,28 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
-import Perfil from './PerfilComponent';
-import Entrenamiento from './EntrenamientoComponent';
-import MisEntrenamientos from './MisEntrenamientosComponent';
+import Perfil from '../screens/PerfilScreen';
+import Entrenamiento from '../screens/EntrenamientoScreen';
+import MisEntrenamientos from '../screens/MisEntrenamientosScreen';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
+import {
+  DrawerContentScrollView,
+  DrawerItemList
+} from '@react-navigation/drawer';
 
-import { View, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet
+} from 'react-native';
 
 const Drawer = createDrawerNavigator();
+
+
+// ======================
+// CUSTOM DRAWER
+// ======================
 
 function CustomDrawerContent(props) {
 
@@ -39,27 +51,46 @@ function CustomDrawerContent(props) {
       <DrawerItemList {...props} />
 
     </DrawerContentScrollView>
+
   );
+
 }
 
-export default function MainApp() {
+
+// ======================
+// DRAWER NAVIGATOR
+// ======================
+
+export default function DrawerNavigator() {
+
   return (
+
     <Drawer.Navigator
-      drawerContent={(props) => (<CustomDrawerContent {...props} />)}
+      drawerContent={(props) => (
+        <CustomDrawerContent {...props} />
+      )}
+
       screenOptions={{
+
         headerStyle: {
           backgroundColor: '#1565C0'
         },
+
         headerTintColor: '#fff',
+
         drawerActiveTintColor: '#1565C0',
+
         drawerLabelStyle: {
           fontSize: 16
         },
+
         drawerStyle: {
           backgroundColor: '#f4f7fb'
         }
+
       }}
     >
+
       <Drawer.Screen
         name="Perfil"
         component={Perfil}
@@ -73,6 +104,7 @@ export default function MainApp() {
           )
         }}
       />
+
       <Drawer.Screen
         name="Entrenamiento"
         component={Entrenamiento}
@@ -86,6 +118,7 @@ export default function MainApp() {
           )
         }}
       />
+
       <Drawer.Screen
         name="Mis Entrenamientos"
         component={MisEntrenamientos}
@@ -99,9 +132,13 @@ export default function MainApp() {
           )
         }}
       />
+
     </Drawer.Navigator>
+
   );
+
 }
+
 
 const styles = StyleSheet.create({
 

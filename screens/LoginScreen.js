@@ -2,59 +2,65 @@ import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TextInput, Button } from 'react-native-paper';
 import { Text } from 'react-native';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
+//import { signInWithEmailAndPassword } from 'firebase/auth';
+//import { auth } from '../firebase/firebaseConfig';
+import { loginUser } from '../services/firebase/authService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function Register({ navigation }) {
+export default function Login({ navigation }) {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
     const [errorMessage, setErrorMessage] = useState('');
 
-    const handleRegister = () => {
+    const handleLogin = async () => {
 
-        setErrorMessage('');
+        try {
 
-        createUserWithEmailAndPassword(auth, email, password)
+            setErrorMessage('');
 
-            .then(() => {
+            await loginUser(email, password);
 
-                navigation.navigate('Login');
+            console.log("Login correcto");
 
-            })
+        } catch (error) {
 
-            .catch(error => {
+            let message = 'Ha ocurrido un error';
 
-                let message = 'Ha ocurrido un error';
+            switch (error.code) {
 
-                switch (error.code) {
+                case 'auth/invalid-credential':
+                    message = 'Email o contraseña incorrectos';
+                    break;
 
-                    case 'auth/email-already-in-use':
-                        message = 'Ese email ya está registrado';
-                        break;
+                case 'auth/invalid-email':
+                    message = 'El email no es válido';
+                    break;
 
-                    case 'auth/invalid-email':
-                        message = 'El email no es válido';
-                        break;
+                case 'auth/user-disabled':
+                    message = 'Esta cuenta ha sido deshabilitada';
+                    break;
 
-                    case 'auth/weak-password':
-                        message = 'La contraseña debe tener al menos 6 caracteres';
-                        break;
+                case 'auth/too-many-requests':
+                    message = 'Demasiados intentos. Inténtalo más tarde';
+                    break;
 
-                    default:
-                        message = 'No se pudo crear la cuenta';
-                }
+                default:
+                    message = 'No se pudo iniciar sesión';
+            }
 
-                setErrorMessage(message);
-            });
+            setErrorMessage(message);
+
+        }
+
     };
 
     return (
         <View style={styles.container}>
 
             <Text style={{ fontSize: 22, textAlign: 'center', marginBottom: 20 }}>
-                Registro
+                Login
             </Text>
 
             <TextInput
@@ -71,7 +77,6 @@ export default function Register({ navigation }) {
                 onChangeText={setPassword}
                 style={styles.input}
             />
-
             {
                 errorMessage !== '' && (
 
@@ -91,12 +96,12 @@ export default function Register({ navigation }) {
                 )
             }
 
-            <Button mode="contained" onPress={handleRegister}>
-                Registrarse
+            <Button mode="contained" onPress={handleLogin}>
+                Login
             </Button>
 
-            <Button onPress={() => navigation.navigate('Login')}>
-                Ya tengo cuenta
+            <Button onPress={() => navigation.navigate('Register')}>
+                Crear cuenta
             </Button>
 
         </View>
@@ -114,9 +119,11 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 15
     },
+
     errorText: {
         color: '#D32F2F',
         marginLeft: 8,
         fontWeight: '500'
     }
+
 });
