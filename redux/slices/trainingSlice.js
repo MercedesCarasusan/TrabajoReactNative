@@ -1,6 +1,13 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { deleteTraining, saveTraining } from '../../services/firebase/trainingService';
+import { deleteTraining, getTrainings, saveTraining } from '../../services/firebase/trainingService';
 import { deleteTrainingImage } from '../../services/local/trainingImageService';
+
+export const fetchTrainingsThunk = createAsyncThunk(
+    'trainings/fetchTrainings',
+    async (userId) => {
+        return await getTrainings(userId);
+    }
+);
 
 export const saveTrainingThunk = createAsyncThunk(
     'trainings/saveTraining',
@@ -63,6 +70,18 @@ const trainingSlice = createSlice({
 
     extraReducers: (builder) => {
         builder
+            .addCase(fetchTrainingsThunk.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchTrainingsThunk.fulfilled, (state, action) => {
+                state.loading = false;
+                state.trainings = action.payload;
+            })
+            .addCase(fetchTrainingsThunk.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            })
             .addCase(saveTrainingThunk.pending, (state) => {
                 state.loading = true;
                 state.error = null;

@@ -4,16 +4,14 @@ import { useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   deleteTrainingThunk,
+  fetchTrainingsThunk,
   setFilter,
-  setTrainings,
-  setLoading,
   setError
 } from '../redux/slices/trainingSlice';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Alert, View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 
-import { getTrainings } from '../services/firebase/trainingService';
 import TrainingFilters from '../components/trainings/TrainingFilters';
 import TrainingCard from '../components/trainings/TrainingCard';
 
@@ -40,28 +38,23 @@ export default function MisEntrenamientos() {
 
       cargarEntrenamientos();
 
-    }, [])
+    }, [dispatch, user])
   );
 
   const cargarEntrenamientos = async () => {
 
     try {
       dispatch(setError(null));
-      dispatch(setLoading(true));
 
       if (!user) return;
 
-      const data = await getTrainings(user.uid);
-
-      dispatch(setTrainings(data));
+      await dispatch(fetchTrainingsThunk(user.uid)).unwrap();
 
     } catch (error) {
 
       console.log(error);
       dispatch(setError(error.message));
 
-    } finally {
-      dispatch(setLoading(false));
     }
   };
 

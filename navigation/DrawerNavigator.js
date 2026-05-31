@@ -3,6 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import Perfil from '../screens/PerfilScreen';
 import Entrenamiento from '../screens/EntrenamientoScreen';
 import MisEntrenamientos from '../screens/MisEntrenamientosScreen';
+import Calorias from '../screens/CaloriasScreen';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -126,6 +127,20 @@ export default function DrawerNavigator() {
           drawerIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="history"
+              color={color}
+              size={size}
+            />
+          )
+        }}
+      />
+
+      <Drawer.Screen
+        name="Calorias"
+        component={Calorias}
+        options={{
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="chart-bar"
               color={color}
               size={size}
             />
