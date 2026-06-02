@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-export default function CaloriesDayChart({ totalCalories }) {
+export default function CaloriesDayChart({ totalCalories, label = 'Hoy' }) {
   return (
     <View style={styles.dayChart}>
       <View style={styles.calorieCircle}>
@@ -14,7 +14,7 @@ export default function CaloriesDayChart({ totalCalories }) {
       </View>
 
       <Text style={styles.dayHint}>
-        Calorias quemadas hoy
+        {label === 'Hoy' ? 'Calor\u00edas quemadas hoy' : `Calor\u00edas quemadas el ${label}`}
       </Text>
     </View>
   );

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 const MAX_BAR_HEIGHT = 180;
 
-export default function CaloriesBarChart({ data, isMonthly = false }) {
+export default function CaloriesBarChart({ data }) {
   const maxCalories = Math.max(
     ...data.map(day => day.kcal),
     0
@@ -19,7 +19,7 @@ export default function CaloriesBarChart({ data, isMonthly = false }) {
         />
 
         <Text style={styles.emptyText}>
-          No hay calorias registradas en este periodo
+          {'No hay calor\u00edas registradas en este periodo'}
         </Text>
       </View>
     );
@@ -42,27 +42,16 @@ export default function CaloriesBarChart({ data, isMonthly = false }) {
               {day.kcal.toFixed(0)}
             </Text>
 
-            <View
-              style={[
-                styles.barTrack,
-                isMonthly && styles.monthBarTrack
-              ]}
-            >
+            <View style={styles.barTrack}>
               <View
                 style={[
                   styles.bar,
-                  isMonthly && styles.monthBar,
                   { height: barHeight }
                 ]}
               />
             </View>
 
-            <Text
-              style={[
-                styles.barLabel,
-                isMonthly && styles.monthBarLabel
-              ]}
-            >
+            <Text style={styles.barLabel}>
               {day.label}
             </Text>
           </View>
@@ -99,18 +88,10 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     overflow: 'hidden'
   },
-  monthBarTrack: {
-    width: 36,
-    borderRadius: 18
-  },
   bar: {
     width: '100%',
     backgroundColor: '#F57C00',
     borderRadius: 11
-  },
-  monthBar: {
-    backgroundColor: '#1565C0',
-    borderRadius: 18
   },
   barLabel: {
     height: 38,
@@ -119,11 +100,6 @@ const styles = StyleSheet.create({
     color: '#607D8B',
     fontSize: 11,
     textTransform: 'capitalize'
-  },
-  monthBarLabel: {
-    height: 42,
-    fontSize: 10,
-    textTransform: 'none'
   },
   emptyContainer: {
     minHeight: 260,

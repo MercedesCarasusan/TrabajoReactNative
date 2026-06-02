@@ -20,13 +20,10 @@ import CaloriesDayChart from '../components/calories/CaloriesDayChart';
 
 const FILTERS = [
   { key: 'day', label: 'Hoy' },
-  { key: 'week', label: '7 días' },
-  { key: 'month', label: 'Mes' }
+  { key: 'week', label: '7 d\u00edas' }
 ];
 
 const WEEK_DAYS = 7;
-const MONTH_DAYS = 30;
-const MONTH_GROUP_SIZE = 6;
 
 const formatDateKey = (date) => {
   const year = date.getFullYear();
@@ -50,17 +47,20 @@ const formatDayNumber = (date) => (
   })
 );
 
-const buildDailyCalories = (trainings, daysToShow) => {
+const buildDailyCalories = (trainings, daysToShow, periodOffset = 0) => {
   const today = new Date();
+  const endDate = new Date(today);
+  endDate.setDate(today.getDate() - (periodOffset * daysToShow));
+
   const days = Array.from({ length: daysToShow }, (_, index) => {
-    const date = new Date(today);
+    const date = new Date(endDate);
     date.setHours(0, 0, 0, 0);
-    date.setDate(today.getDate() - (daysToShow - 1 - index));
+    date.setDate(endDate.getDate() - (daysToShow - 1 - index));
 
     return {
       key: formatDateKey(date),
       date,
-      label: daysToShow === 1 ? 'Hoy' : formatShortDay(date),
+      label: daysToShow === 1 && periodOffset === 0 ? 'Hoy' : formatShortDay(date),
       kcal: 0
     };
   });
@@ -88,31 +88,21 @@ const buildDailyCalories = (trainings, daysToShow) => {
   }));
 };
 
-const buildMonthlyCalories = (trainings) => {
-  const dailyCalories = buildDailyCalories(trainings, MONTH_DAYS);
-  const groups = [];
+const getFilterTitle = (filter, chartData) => {
+  if (filter === 'day') {
+    const selectedDay = chartData[0];
 
-  for (let index = 0; index < dailyCalories.length; index += MONTH_GROUP_SIZE) {
-    const groupDays = dailyCalories.slice(index, index + MONTH_GROUP_SIZE);
-    const firstDay = groupDays[0].date;
-    const lastDay = groupDays[groupDays.length - 1].date;
-    const kcal = groupDays.reduce((sum, day) => sum + day.kcal, 0);
-
-    groups.push({
-      key: `${formatDateKey(firstDay)}-${formatDateKey(lastDay)}`,
-      label: `${formatDayNumber(firstDay)}\n${formatDayNumber(lastDay)}`,
-      kcal: Number(kcal.toFixed(2))
-    });
+    return selectedDay?.label === 'Hoy'
+      ? 'Hoy'
+      : formatDayNumber(selectedDay.date);
   }
 
-  return groups;
-};
+  const firstDay = chartData[0];
+  const lastDay = chartData[chartData.length - 1];
 
-const getFilterTitle = (filter) => {
-  if (filter === 'day') return 'Este día';
-  if (filter === 'month') return 'Último mes';
+  if (!firstDay || !lastDay) return '\u00daltimos 7 d\u00edas';
 
-  return 'Últimos 7 días';
+  return `${formatDayNumber(firstDay.date)} - ${formatDayNumber(lastDay.date)}`;
 };
 
 export default function CaloriasScreen() {
@@ -122,6 +112,8 @@ export default function CaloriasScreen() {
   const loading = useSelector(state => state.trainings.loading);
   const error = useSelector(state => state.trainings.error);
   const [selectedFilter, setSelectedFilter] = useState('week');
+  const [dayOffset, setDayOffset] = useState(0);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -144,34 +136,42 @@ export default function CaloriasScreen() {
   );
 
   const dayCalories = useMemo(
-    () => buildDailyCalories(trainings, 1),
-    [trainings]
+    () => buildDailyCalories(trainings, 1, dayOffset),
+    [trainings, dayOffset]
   );
   const weekCalories = useMemo(
-    () => buildDailyCalories(trainings, WEEK_DAYS),
-    [trainings]
-  );
-  const monthCalories = useMemo(
-    () => buildMonthlyCalories(trainings),
-    [trainings]
+    () => buildDailyCalories(trainings, WEEK_DAYS, weekOffset),
+    [trainings, weekOffset]
   );
 
   const chartData = selectedFilter === 'day'
     ? dayCalories
-    : selectedFilter === 'month'
-      ? monthCalories
-      : weekCalories;
+    : weekCalories;
 
   const totalCalories = chartData.reduce(
     (sum, day) => sum + day.kcal,
     0
   );
-  const periodDays = selectedFilter === 'day'
-    ? 1
-    : selectedFilter === 'month'
-      ? MONTH_DAYS
-      : WEEK_DAYS;
-  const averageCalories = totalCalories / periodDays;
+  const averageCalories = totalCalories / WEEK_DAYS;
+  const currentOffset = selectedFilter === 'day' ? dayOffset : weekOffset;
+
+  const goToPreviousPeriod = () => {
+    if (selectedFilter === 'day') {
+      setDayOffset(offset => offset + 1);
+      return;
+    }
+
+    setWeekOffset(offset => offset + 1);
+  };
+
+  const goToNextPeriod = () => {
+    if (selectedFilter === 'day') {
+      setDayOffset(offset => Math.max(offset - 1, 0));
+      return;
+    }
+
+    setWeekOffset(offset => Math.max(offset - 1, 0));
+  };
 
   if (loading) {
     return (
@@ -194,8 +194,8 @@ export default function CaloriasScreen() {
         />
 
         <View style={styles.headerText}>
-          <Text style={styles.title}>Calorías quemadas</Text>
-          <Text style={styles.subtitle}>{getFilterTitle(selectedFilter)}</Text>
+          <Text style={styles.title}>{'Calor\u00edas quemadas'}</Text>
+          <Text style={styles.subtitle}>{getFilterTitle(selectedFilter, chartData)}</Text>
         </View>
       </View>
 
@@ -226,29 +226,69 @@ export default function CaloriasScreen() {
         })}
       </View>
 
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryValue}>
-            {totalCalories.toFixed(0)}
-          </Text>
-          <Text style={styles.summaryLabel}>Kcal totales</Text>
-        </View>
+      <View style={styles.periodNavigation}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={goToPreviousPeriod}
+          style={styles.periodButton}
+        >
+          <MaterialCommunityIcons
+            name="chevron-left"
+            size={28}
+            color="#1565C0"
+          />
+        </TouchableOpacity>
 
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryValue}>
-            {averageCalories.toFixed(0)}
-          </Text>
-          <Text style={styles.summaryLabel}>Media diaria</Text>
-        </View>
+        <Text style={styles.periodText}>
+          {selectedFilter === 'day' ? 'D\u00eda seleccionado' : 'Semana seleccionada'}
+        </Text>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={goToNextPeriod}
+          disabled={currentOffset === 0}
+          style={[
+            styles.periodButton,
+            currentOffset === 0 && styles.periodButtonDisabled
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={28}
+            color={currentOffset === 0 ? '#B0BEC5' : '#1565C0'}
+          />
+        </TouchableOpacity>
       </View>
+
+      {selectedFilter === 'week' && (
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryBox}>
+            <Text style={styles.summaryValue}>
+              {totalCalories.toFixed(0)}
+            </Text>
+            <Text style={styles.summaryLabel}>Kcal totales</Text>
+          </View>
+
+          <View style={styles.summaryBox}>
+            <Text style={styles.summaryValue}>
+              {averageCalories.toFixed(0)}
+            </Text>
+            <Text style={styles.summaryLabel}>Media diaria</Text>
+          </View>
+        </View>
+      )}
 
       <View style={styles.chartPanel}>
         {selectedFilter === 'day'
-          ? <CaloriesDayChart totalCalories={totalCalories} />
+          ? (
+            <CaloriesDayChart
+              totalCalories={totalCalories}
+              label={chartData[0]?.label}
+            />
+          )
           : (
             <CaloriesBarChart
               data={chartData}
-              isMonthly={selectedFilter === 'month'}
             />
           )}
       </View>
@@ -322,6 +362,32 @@ const styles = StyleSheet.create({
   },
   filterTextSelected: {
     color: '#fff'
+  },
+  periodNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 14,
+    elevation: 3
+  },
+  periodButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  periodButtonDisabled: {
+    backgroundColor: '#ECEFF1'
+  },
+  periodText: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#455A64',
+    fontWeight: 'bold'
   },
   summaryRow: {
     flexDirection: 'row',
